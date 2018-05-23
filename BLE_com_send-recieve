@@ -6,7 +6,8 @@
 
 #define LED 2                         //výstupní LED (integrovaná)
 #define TOUTCH_PIN T0                 // dotykový pin
-#define analog 13                     //Analogový vstup Pot.
+#define analog 35
+//Analogový vstup Pot.
 
 int touch_value = 100;
 int analog_value=0;
@@ -57,12 +58,12 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         Serial.println();
         // kontrola přijaté zprávy
         // pokud obsahuje znak A, rozsviť LED diodu
-        if (prijataZprava.find("A") != -1) {
+        if (prijataZprava.find("D") != -1) {
           Serial.println("Zapnutí LED!");
           digitalWrite(LED, HIGH);
         }
         // pokud obsahuje znak B, zhasni LED diodu
-        else if (prijataZprava.find("B") != -1) {
+        else if (prijataZprava.find("E") != -1) {
           Serial.println("Vypnutí LED!");
           digitalWrite(LED, LOW);
         }
@@ -101,7 +102,7 @@ void setup() {
   Serial.println("BLE nastaveno, ceka na pripojeni..");
 }
 void loop() {
-  
+  analog_value= analogRead(analog);
   if (dev_connected == true) {
     if(inp_string.find("A")!= -1)
       {
@@ -118,8 +119,8 @@ void loop() {
       }
      if(inp_string.find("B")!= -1)
       {
-        String zprava = "ANALOG READ";
-        analog_value=analogRead(analog);
+        String zprava = "ANALOG READ ";
+
         zprava += analog_value;
         zprava += "\n";
          char zpravaChar[zprava.length() + 1];
@@ -143,11 +144,9 @@ void loop() {
     
     
     // vytištění odeslané zprávy po sériové lince
-  /*  Serial.print("*** Odeslana zprava: ");
-    Serial.print(zprava);
-  */
+
   }
   inp_string = "0";
   // pauza před novým během smyčky
-  delay(1000);
+  delay(200);
 }

@@ -6,13 +6,12 @@
 
 #define LED 2                         //výstupní LED (integrovaná)
 #define TOUTCH_PIN T0                 // dotykový pin
-#define analog 35
-//Analogový vstup Pot.
+#define analog 35                     //Analogový vstup Pot.
+
 
 int touch_value = 100;
 int analog_value=0;
 
-std::string inp_string = "0";
 
 
 // inicializace modulu z knihovny
@@ -21,6 +20,8 @@ BLECharacteristic *pCharacteristic;
 bool dev_connected = false;
 // proměnná pro ukládání přijaté zprávy
 std::string prijataZprava;
+std::string inp_string = "0";
+
 
 //UUID
 #define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -56,13 +57,14 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           Serial.print(prijataZprava[i]);
         }
         Serial.println();
-        // kontrola přijaté zprávy
-        // pokud obsahuje znak A, rozsviť LED diodu
+
+
+        // pokud obsahuje znak D, rozsviť LED diodu
         if (prijataZprava.find("D") != -1) {
           Serial.println("Zapnutí LED!");
           digitalWrite(LED, HIGH);
         }
-        // pokud obsahuje znak B, zhasni LED diodu
+        // pokud obsahuje znak E, zhasni LED diodu
         else if (prijataZprava.find("E") != -1) {
           Serial.println("Vypnutí LED!");
           digitalWrite(LED, LOW);
@@ -101,6 +103,9 @@ void setup() {
   pServer->getAdvertising()->start();
   Serial.println("BLE nastaveno, ceka na pripojeni..");
 }
+
+void BLEsend(String zprava);
+
 void loop() {
   analog_value= analogRead(analog);
   if (dev_connected == true) {
@@ -110,12 +115,7 @@ void loop() {
         touch_value = touchRead(TOUTCH_PIN);
         zprava += touch_value;
         zprava += "\n";
-         char zpravaChar[zprava.length() + 1];
-          zprava.toCharArray(zpravaChar, zprava.length() + 1);
-             // přepsání zprávy do BLE služby
-           pCharacteristic->setValue(zpravaChar);
-           // odeslání zprávy skrze BLE do připojeného zařízení
-          pCharacteristic->notify();
+        BLEsend(zprava);
       }
      if(inp_string.find("B")!= -1)
       {
@@ -123,30 +123,28 @@ void loop() {
 
         zprava += analog_value;
         zprava += "\n";
-         char zpravaChar[zprava.length() + 1];
-         zprava.toCharArray(zpravaChar, zprava.length() + 1);
-         // přepsání zprávy do BLE služby
-        pCharacteristic->setValue(zpravaChar);
-         // odeslání zprávy skrze BLE do připojeného zařízení
-        pCharacteristic->notify();
+        BLEsend(zprava);
       }
      if(inp_string.find("C")!= -1)
       {
         String zprava = "Read C";
         zprava += "\n";
-         char zpravaChar[zprava.length() + 1];
+        BLEsend(zprava);
+        Serial.print("C");
+      }
+  }
+  inp_string = "0";
+  // pause
+  delay(200);
+}
+
+void BLEsend(String zprava)
+{
+           char zpravaChar[zprava.length() + 1];
         zprava.toCharArray(zpravaChar, zprava.length() + 1);
          // přepsání zprávy do BLE služby
          pCharacteristic->setValue(zpravaChar);
         // odeslání zprávy skrze BLE do připojeného zařízení
         pCharacteristic->notify();
-      }
-    
-    
-    // vytištění odeslané zprávy po sériové lince
-
-  }
-  inp_string = "0";
-  // pauza před novým během smyčky
-  delay(200);
 }
+

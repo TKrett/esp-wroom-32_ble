@@ -28,6 +28,8 @@ std::string inp_string = "0";
 #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+void BLEsend(String zprava);
+
 // třída pro kontrolu připojení
 class MyServerCallbacks: public BLEServerCallbacks 
 {
@@ -35,10 +37,13 @@ class MyServerCallbacks: public BLEServerCallbacks
     void onConnect(BLEServer* pServer) 
     {
       dev_connected = true;
+      Serial.println("CLIENT connected");
     };
     // při odpojení zařízení nastav proměnnou na log0
     void onDisconnect(BLEServer* pServer) {
       dev_connected = false;
+      Serial.println("CLIENT disconnected");
+
     }
 };
 
@@ -52,22 +57,9 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       // pokud není zpráva prázdná, vypiš její obsah
       // po znacích po sériové lince
       if (prijataZprava.length() > 0) {
-        Serial.print("Prijata zprava: ");
+        Serial.print("Recieved : ");
         for (int i = 0; i < prijataZprava.length(); i++) {
           Serial.print(prijataZprava[i]);
-        }
-        Serial.println();
-
-
-        // pokud obsahuje znak D, rozsviť LED diodu
-        if (prijataZprava.find("D") != -1) {
-          Serial.println("Zapnutí LED!");
-          digitalWrite(LED, HIGH);
-        }
-        // pokud obsahuje znak E, zhasni LED diodu
-        else if (prijataZprava.find("E") != -1) {
-          Serial.println("Vypnutí LED!");
-          digitalWrite(LED, LOW);
         }
       }
     }
@@ -104,11 +96,12 @@ void setup() {
   Serial.println("BLE nastaveno, ceka na pripojeni..");
 }
 
-void BLEsend(String zprava);
 
 void loop() {
+  Serial.println(BLEAddress);
   analog_value= analogRead(analog);
   if (dev_connected == true) {
+
     if(inp_string.find("A")!= -1)
       {
         String zprava = "TOUCH SENSE";
@@ -120,7 +113,6 @@ void loop() {
      if(inp_string.find("B")!= -1)
       {
         String zprava = "ANALOG READ ";
-
         zprava += analog_value;
         zprava += "\n";
         BLEsend(zprava);
@@ -130,12 +122,28 @@ void loop() {
         String zprava = "Read C";
         zprava += "\n";
         BLEsend(zprava);
-        Serial.print("C");
       }
+      if (inp_string.find("D") != -1) 
+      {
+        String zprava = "LED ON";
+        zprava += "\n";
+        BLEsend(zprava);
+        Serial.println(zprava);
+        digitalWrite(LED, HIGH);
+      }
+      else 
+        if (inp_string.find("E") != -1) 
+        {
+          String zprava = "LED OFF";
+          zprava += "\n";
+          BLEsend(zprava);
+          Serial.println(zprava);
+          digitalWrite(LED, LOW);
+        }   
   }
   inp_string = "0";
   // pause
-  delay(200);
+  delay(100);
 }
 
 void BLEsend(String zprava)
@@ -147,4 +155,3 @@ void BLEsend(String zprava)
         // odeslání zprávy skrze BLE do připojeného zařízení
         pCharacteristic->notify();
 }
-

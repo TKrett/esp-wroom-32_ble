@@ -5,21 +5,19 @@
 
 
 #define LED 2                         //výstupní LED (integrovaná)
-#define TOUTCH_PIN T0                 // dotykový pin
+#define TOUCH_PIN T0                 // dotykový pin
 #define analog 35                     //Analogový vstup Pot.
 
 
 int touch_value = 100;
 int analog_value=0;
+//String Msg="0";
 
 
-
-// inicializace modulu z knihovny
 BLECharacteristic *pCharacteristic;
-// proměnná pro kontrolu připojených zařízení
+
 bool dev_connected = false;
-// proměnná pro ukládání přijaté zprávy
-std::string prijataZprava;
+std::string inpMsg;
 std::string inp_string = "0";
 
 
@@ -49,33 +47,47 @@ class MyServerCallbacks: public BLEServerCallbacks
 
 // třída pro příjem zprávy
 class MyCallbacks: public BLECharacteristicCallbacks {
-    // při příjmu zprávy proveď následující
+    // pokud byla přijata zpráva, pak :
     void onWrite(BLECharacteristic *pCharacteristic) {
       // načti přijatou zprávu do proměnné
-      prijataZprava = pCharacteristic->getValue();
-      inp_string = prijataZprava;
+      inpMsg = pCharacteristic->getValue();
+      inp_string = inpMsg;
       // pokud není zpráva prázdná, vypiš její obsah
       // po znacích po sériové lince
-      if (prijataZprava.length() > 0) {
+      if (inpMsg.length() > 0) {
         Serial.print("Recieved : ");
-        for (int i = 0; i < prijataZprava.length(); i++) {
-          Serial.print(prijataZprava[i]);
+        for (int i = 0; i < inpMsg.length(); i++) {
+          Serial.print(inpMsg[i]);
         }
       }
     }
 };
+
 void setup() {
   Serial.begin(115200);
 
   pinMode(LED, OUTPUT);
   pinMode(analog,INPUT);
 
-  // inicializace Bluetooth s nastavením jména zařízení
-  BLEDevice::init("ESP32 BLE");
-  // vytvoření BLE serveru
+  // inicializace prostředí a nastavení jména
+  BLEDevice::init("ESP32 SEND_REC");
+
+  //nastavení zabezpečeného spojení - (nefunguje!! není možno připojit se k PC nebo IPhone) 
+/*  esp_ble_auth_req_t auth_req = ESP_LE_AUTH_NO_BOND;     
+   esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;          
+   uint8_t key_size = 16;     
+   uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+   uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+   esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+   esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
+   esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
+   esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
+   esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));*/
+   
+  // vytváření serveru
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
-  // vytvoření BLE služby
+  // vytváření služby
   BLEService *pService = pServer->createService(SERVICE_UUID);
   // vytvoření BLE komunikačního kanálu pro odesílání (TX)
   pCharacteristic = pService->createCharacteristic(
@@ -89,27 +101,34 @@ void setup() {
                                          BLECharacteristic::PROPERTY_WRITE
                                        );
   pCharacteristic->setCallbacks(new MyCallbacks());
-  // zahájení BLE služby
+  // spuštění služby
   pService->start();
-  // zapnutí viditelnosti BLE
+  // zapnutí viditelnosti 
   pServer->getAdvertising()->start();
-  Serial.println("BLE nastaveno, ceka na pripojeni..");
+  Serial.println("Bluetooth ready, awaiting connection..");
 }
 
 
 void loop() {
-  Serial.println(BLEAddress);
-  analog_value= analogRead(analog);
   if (dev_connected == true) {
-
+   /* if(inp_string.find("set")!= -1){
+    for(int i=inp_string.length();i>0;i--)
+    {
+      Msg[i]=inp_string[i];
+      Serial.println(Msg);
+    }
+    }*/
+  analog_value= analogRead(analog);
+    //pokud je na vstupu "A" pak odepiš hodnotu dotykového pinu
     if(inp_string.find("A")!= -1)
       {
         String zprava = "TOUCH SENSE";
-        touch_value = touchRead(TOUTCH_PIN);
+        touch_value = touchRead(TOUCH_PIN);
         zprava += touch_value;
         zprava += "\n";
         BLEsend(zprava);
       }
+          //pokud je na vstupu "B" pak odepiš hodnotu analogového vstupu
      if(inp_string.find("B")!= -1)
       {
         String zprava = "ANALOG READ ";
@@ -117,12 +136,14 @@ void loop() {
         zprava += "\n";
         BLEsend(zprava);
       }
+          //pokud je na vstupu "C" pak odepiš hodnotu C
      if(inp_string.find("C")!= -1)
       {
         String zprava = "Read C";
         zprava += "\n";
         BLEsend(zprava);
       }
+          //pokud je na vstupu "D" pak rožni LED a odepiš že je zapnutá
       if (inp_string.find("D") != -1) 
       {
         String zprava = "LED ON";
@@ -132,6 +153,7 @@ void loop() {
         digitalWrite(LED, HIGH);
       }
       else 
+              //pokud je na vstupu "E" pak zhasni LED a odepiš že je vypnutá
         if (inp_string.find("E") != -1) 
         {
           String zprava = "LED OFF";
@@ -140,18 +162,23 @@ void loop() {
           Serial.println(zprava);
           digitalWrite(LED, LOW);
         }   
+  /*   if (Msg.startsWith("print")==true) 
+      {
+        BLEsend(Msg);
+      }*/
   }
   inp_string = "0";
   // pause
   delay(100);
 }
 
+//funkce pro přepsání zprávy do bluetooth
 void BLEsend(String zprava)
 {
            char zpravaChar[zprava.length() + 1];
         zprava.toCharArray(zpravaChar, zprava.length() + 1);
-         // přepsání zprávy do BLE služby
+         // nastavení hodnoty BLE na hodnotu zprávy
          pCharacteristic->setValue(zpravaChar);
-        // odeslání zprávy skrze BLE do připojeného zařízení
+        // odeslání zprávy
         pCharacteristic->notify();
 }
